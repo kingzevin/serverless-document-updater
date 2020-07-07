@@ -15,6 +15,7 @@ module.exports =
 			user: process.env['WEB_API_USER'] or "sharelatex"
 			pass: process.env['WEB_API_PASSWORD'] or "password"
 		trackchanges:
+		# zevin
 			url: process.env['TRACKCHANGES_URL'] or "http://#{process.env["TRACK_CHANGES_HOST"] or "localhost"}:3015"
 		project_history:
 			enabled: true

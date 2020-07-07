@@ -317,7 +317,7 @@
       project_id = params.project_id ||"5ecf0cb75f735b007489e9e8";
       doc_id = params.doc_id || "5ecf0cb75f735b007489e9e9";
       DispatchManager.createAndStartDispatchers(Settings.dispatcherCount || 10);
-      await sleep(500);    
+      await sleep(1000);    
       return {body:"OK"};
     }
     else return (async () => {
