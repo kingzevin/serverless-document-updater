@@ -33,8 +33,6 @@
           return worker.client.blpop("pending-updates-list", 0, function(error, result) {
             var backgroundTask, doc_id, doc_key, list_name, project_id, _ref;
             logger.log("getting pending-updates-list", error, result);
-            //zevin
-            logger.log({blpop:true}, 'zevin\'s met blpop\n\n')            
             timer.done();
             if (error != null) {
               return callback(error);

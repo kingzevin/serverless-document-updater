@@ -83,13 +83,6 @@
     app.use(express.bodyParser({
       limit: Settings.max_doc_length + 64 * 1024
     }));
-  
-  app.use(function (req, res, next) {
-    logger.error({
-      err: req
-    }, 'zevin\'s log')
-    return next()
-  });
     return app.use(app.router);
   });
   

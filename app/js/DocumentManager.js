@@ -44,10 +44,7 @@
         if (error != null) {
           return callback(error);
         }
-        logger.error({
-          lines: lines
 
-        }, 'zevin\'s log: before persistence');
         if ((lines == null) || (version == null)) {
           logger.log({
             project_id: project_id,

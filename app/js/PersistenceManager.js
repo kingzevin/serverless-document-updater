@@ -121,6 +121,9 @@
           pass: Settings.apis.web.pass,
           sendImmediately: true
         },
+        headers: {
+          "accept": "application/json, text/plain"
+        },
         jar: false,
         timeout: MAX_HTTP_REQUEST_LENGTH
       }, function(error, res, body) {
