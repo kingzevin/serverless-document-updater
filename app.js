@@ -282,13 +282,13 @@
 
   host = Settings.internal.documentupdater.host || "localhost";
 
-    app.listen(port, host, function() {
-      logger.info("Document-updater starting up, listening on " + host + ":" + port);
-      if (Settings.continuousBackgroundFlush) {
-        logger.info("Starting continuous background flush");
-        return DeleteQueueManager.startBackgroundFlush();
-      }
-    });
+  app.listen(port, host, function() {
+    logger.info("Document-updater starting up, listening on " + host + ":" + port);
+    if (Settings.continuousBackgroundFlush) {
+      logger.info("Starting continuous background flush");
+      return DeleteQueueManager.startBackgroundFlush();
+    }
+  });
 
       
   module.exports.main = test;
@@ -305,224 +305,48 @@
   }
 
   async function test(params = {}) {
-    const {promisify} = require("util"); 
-    const request = require("request");
-    const operation = params.operation || "RedisUpdated"
-       //"getDoc"
-     //console.log("outPut test")
-    const opts = { timeout: 1000 * 20 }
+    const url = params.__ow_path || '/';
+    const method = params.__ow_method || 'get';
+    const headers = params.__ow_headers || {
+      'Connection': 'keep-alive',
+      'Accept': 'application/json, text/plain, */*',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36',
+      'Content-Type': 'application/json;charset=UTF-8',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7,fr;q=0.6',
+      'Cookie': 'sharelatex.sid=s%3AVVk1PqK4VnJLoGBMSFYwsoLT4W0yulti.JR4Yj544rl6yg%2BaOoLzky5ke8lS51jrYiYnpLN4MzU4'
+    };
+    
+    const { promisify } = require('util')
+    const request = require("request")
+    const reqPromise = promisify(request[method]);
+    if(url.includes('RedisUpdated')){
       project_id = params.project_id ||"5ecf0cb75f735b007489e9e8";
       doc_id = params.doc_id || "5ecf0cb75f735b007489e9e9";
-    if(operation === "RedisUpdated")
-    {
-      
       DispatchManager.createAndStartDispatchers(Settings.dispatcherCount || 10);
-      await sleep(2000);    
+      await sleep(500);    
       return {body:"OK"};
     }
-    else if (operation === "getDoc") {
-      opts.url = `http://localhost:3003/project/${project_id}/doc/${doc_id}`;
-      const getReq = promisify(request.get);
-        
-						console.log("Now got the result");
-      return (async () => {
-        let result = await getReq(opts);
-						console.log("Now got the result");
-        let body = result.body;
-        
-        return { result:  body };
-      })();
-    }
-    else if(operation === "getProjectDocsAndFlushIfOld1")
-    {
-      opts.url = `http://localhost:3003/project/${project_id}/doc`;
-      const getReq = promisify(request.get); 
-      return (async () => {
-        let result = await getReq(opts);
-        let body = result.body;
-        let statusCode = result.statusCode;
-        if (statusCode == 409)
-        {
-          return { result: { message: `error processing ${operation} request`, status: "failed" } };
-        }
-        return { result:  body };
-      })();
-    }
-    else if (operation === "getProjectDocsAndFlushIfOld2") {
-      opts.url = `http://localhost:3003/project/${project_id}/get_and_flush_if_old`;
-      const postReq = promisify(request.post);
-      return (async () => {
-        let result = await postReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: `error processing ${operation} request`, status: "failed", statusCode } };
-        }
-        return { status: "passed"} 
-      })();
-    }
-    else if (operation === "clearState") {
-      opts.url = `http://localhost:3003/project/${project_id}/clearState`;
-      const postReq = promisify(request.post);
-  
-      return (async () => {
-        let result = await postReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: `error processing ${operation} request`, status: "failed" }, statusCode };
-        }
-        // return {result: {words:result.body}}
-        return { status: "passed", statusCode } ;
-      })();
-    }
-    else if(operation === "setDoc")
-    {
-      //app.post('/project/${project_id}/doc/:doc_id', HttpController.setDoc);
-      opts.url = `http://localhost:3003/project/${project_id}/doc/${doc_id}'`;
-      const postReq = promisify(request.post);
-  
-      return (async () => {
-        let result = await postReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode === 204) {
-          return { result: { message: `success processing ${operation} request`, status: "success" }, statusCode };
-        }
-        return { message: "ERROR", status: "Failed", statusCode  };
-      })();
-    }
-    else if (operation === "status") {
-      opts.url = `http://localhost:3003/status`;
-      const getReq = promisify(request.get);
-  
-      return (async () => {
-        let result = await getReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: `error processing ${operation} request`, status: "failed" }, statusCode };
-        }
-        return { result: { message: "up", status: "passed", statusCode } };
-      })();
-    }
-    else if (operation === "healthCheck") {
-      opts.url = `http://localhost:3003/health_check`;
-      const getReq = promisify(request.get);
-  
-      return (async () => {
-        let result = await getReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: "health check failed", status: "failed" } };
-        }
-        return { result: { message: "health check passed", status: "passed", statusCode } };
-      })();
-    }
-    else if (operation === "flushDocIfLoaded")
-    {
-      //app.post('/project/${project_id}/doc/:doc_id/flush', HttpController.)
-      opts.url = `http://localhost:3003/project/${project_id}/doc/${doc_id}/flush`
-      const postReq = promisify(request.post);
-      return (async () => {
-        let result = await postReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: `error processing ${operation} request`, status: "failed" } };
-        }
-        // return {result: {words:result.body}}
-        return { status: "passed", message:"flushed doc via http" } ;
-      })();
-    }
-    else if(operation === "updateProject")
-    {
-      //app.post('/project/${project_id}', HttpController.updateProject);
-      opts.url = `http://localhost:3003/project/${project_id}`
-      const postReq = promisify(request.post);
-      return (async () => {
-        let result = await postReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: `error processing ${operation} request`, status: "failed" }, statusCode };
-        }
-        // return {result: {words:result.body}}
-        return { status: "passed", statusCode } ;
-      })();
-    }
-    else if(operation === "flushProject")
-    {
-      //app.post('/project/${project_id}/flush', HttpController.flushProject);
-      opts.url = `http://localhost:3003/project/${project_id}/flush`
-      const postReq = promisify(request.post);
-      return (async () => {
-        let result = await postReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: `error processing ${operation} request`, status: "failed" }, statusCode };
-        }
-        // return {result: {words:result.body}}
-        return { status: "passed", statusCode } ;
-      })();
-    }
-    else if(operation === "resyncProjectHistory")
-    {
-      //app.post('/project/${project_id}/history/resync', HttpController.resyncProjectHistory);
-      opts.url = `http://localhost:3003/project/${project_id}/history/resync`
-      const postReq = promisify(request.post);
-      return (async () => {
-        let result = await postReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: `error processing ${operation} request`, status: "failed" }, statusCode };
-        }
-        // return {result: {words:result.body}}
-        return { status: "passed", statusCode } ;
-      })();
-    }
-    else if(operation === "flushAndDeleteDoc")
-    {
-      //app["delete"]('/project/${project_id}/doc/:doc_id', HttpController.flushAndDeleteDoc);
-      opts.url = `http://localhost:3003/project/${project_id}/doc/${doc_id}`
-      const delReq = promisify(request.del);
-      return (async () => {
-        let result = await delReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: `error processing ${operation} request`, status: "failed" }, statusCode };
-        }
-        // return {result: {words:result.body}}
-        return { status: "passed", statusCode } ;
-      })();
-    }
-    else if(operation === "deleteProject")
-    {
-      //app["delete"]('/project/${project_id}', HttpController.deleteProject)
-      opts.url = `http://localhost:3003/project/${project_id}`
-      const delReq = promisify(request.del);
-      return (async () => {
-        let result = await delReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: `error processing ${operation} request`, status: "failed" }, statusCode };
-        }
-        // return {result: {words:result.body}}
-        return { status: "passed", statusCode } ;
-      })();
-    }
-    else if(operation === "healthCheckRedis")
-    {	
-      opts.url = `http://localhost:3003/health_check/redis_cluster`;
-      const getReq = promisify(request.get);
-      return (async () => {
-        let result = await getReq(opts);
-        let statusCode = result.statusCode;
-        if (statusCode == 500) {
-          return { result: { message: `error processing ${operation} request`, status: "failed" }, statusCode };
-        }
-        return { status: "passed", statusCode }
-      })();
-
-    }
-    else
-    {
-      return {message: "unknown operations"}
-    }
+    else return (async () => {
+      let result;
+      let opt={}
+      opt['headers'] = headers;
+      opt['url'] = `http://${host}:${port}${url}`;
+      let str = params.__ow_body || '';
+      if(str !== "" && Buffer.from(str, 'base64').toString('base64') === str){
+        // base64
+        params.__ow_body = Buffer.from(str, 'base64').toString('ascii');
+      }
+      opt['body'] = params.__ow_body;
+      if(params.__ow_query !== ""){
+        const qs = '?' + params.__ow_query;
+        opt['url'] = opt['url'] + qs;
+      }
+      result = await reqPromise(opt);
+      var response = JSON.parse(JSON.stringify(result));
+      delete response.request
+      return response
+    })();
   }
 
   if(!module.parent){
