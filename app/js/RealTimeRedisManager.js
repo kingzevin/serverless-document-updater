@@ -5,7 +5,7 @@
   Settings = require('settings-sharelatex');
 
   rclient = require("redis-sharelatex").createClient(Settings.redis.documentupdater);
-  
+
   pubsubClient = require("redis-sharelatex").createClient(Settings.redis.pubsub);
 
   Keys = Settings.redis.documentupdater.key_schema;
@@ -68,7 +68,6 @@
       if (Settings.publishOnIndividualChannels) {
         return pubsubClient.publish("applied-ops:" + data.doc_id, JSON.stringify(data));
       } else {
-        
         return pubsubClient.publish("applied-ops", JSON.stringify(data));
       }
     }

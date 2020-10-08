@@ -27,14 +27,10 @@
   process.env["SESSION_SECRET"] = 'K1pOaUSsFIoXADLUIgtIh4toKBzgoZS1vHRXNySWQc';
   process.env["SHARELATEX_SESSION_SECRET"] = 'K1pOaUSsFIoXADLUIgtIh4toKBzgoZS1vHRXNySWQc';
   process.env["SHARELATEX_CONFIG"] = __dirname + '/settings.coffee';
-  process.env['WEB_URL'] = 'https://172.17.0.1/api/v1/web/guest/sharelatex/web'
-
-  process.env['TRACKCHANGES_URL'] = 'https://172.17.0.1/api/v1/web/guest/sharelatex/track-changes'
-  process.env['NODE_TLS_REJECT_UNAUTHORIZED']=0
+  process.env['WEB_URL'] = 'http://172.17.0.1:10001/api/v1/web/guest/sharelatex/web'
+  process.env['TRACKCHANGES_URL'] = 'http://172.17.0.1:10001/api/v1/web/guest/sharelatex/track-changes'
 
   var DeleteQueueManager, DispatchManager, Errors, HttpController, Metrics, Path, RedisManager, Settings, app, async, docUpdaterRedisClient, eventName, events, express, host, http, logger, mongojs, port, pubsubClient, shutdownCleanly, signal, watchForEvent, _i, _j, _len, _len1, _ref, _ref1, _ref2, _ref3, _ref4, _ref5;
-  
-  const runmiddlewareFlag = false
 
   Metrics = require("metrics-sharelatex");
 
@@ -85,9 +81,10 @@
     }));
     return app.use(app.router);
   });
-  
 
   Metrics.injectMetricsRoute(app);
+
+  DispatchManager.createAndStartDispatchers(Settings.dispatcherCount || 10);
 
   app.param('project_id', function(req, res, next, project_id) {
     if (project_id != null ? project_id.match(/^[0-9a-f]{24}$/) : void 0) {
@@ -138,6 +135,17 @@
   app.get('/flush_all_projects', HttpController.flushAllProjects);
 
   app.get('/flush_queued_projects', HttpController.flushQueuedProjects);
+
+  app.get('/RedisUpdated', async function(req, res) {
+    function sleep(ms) {
+    	return new Promise((resolve) => {
+      	setTimeout(resolve, ms);
+      }); 
+    }
+    DispatchManager.createAndStartDispatchers(Settings.dispatcherCount || 10);
+    await sleep(1000);    
+    return res.send('redis updated')
+  })
 
   app.get('/total', function(req, res) {
     var timer;
@@ -275,52 +283,32 @@
 
   host = Settings.internal.documentupdater.host || "localhost";
 
-  app.listen(port, host, function() {
-    logger.info("Document-updater starting up, listening on " + host + ":" + port);
-    if (Settings.continuousBackgroundFlush) {
-      logger.info("Starting continuous background flush");
-      return DeleteQueueManager.startBackgroundFlush();
-    }
-  });
-
-      
-  module.exports.main = test;
+  // if (!module.parent) {
+    app.listen(port, host, function() {
+      logger.info("Document-updater starting up, listening on " + host + ":" + port);
+      if (Settings.continuousBackgroundFlush) {
+        logger.info("Starting continuous background flush");
+        return DeleteQueueManager.startBackgroundFlush();
+      }
+    });
+  // }
 
   _ref5 = ['SIGINT', 'SIGHUP', 'SIGQUIT', 'SIGUSR1', 'SIGUSR2', 'SIGTERM', 'SIGABRT'];
   for (_j = 0, _len1 = _ref5.length; _j < _len1; _j++) {
     signal = _ref5[_j];
     process.on(signal, shutdownCleanly(signal));
   };
-	function sleep(ms) {
-    	return new Promise((resolve) => {
-      	setTimeout(resolve, ms);
-    	}); 
-  }
 
-  async function test(params = {}) {
-    const url = params.__ow_path || '/';
-    const method = params.__ow_method || 'get';
-    const headers = params.__ow_headers || {
-      'Connection': 'keep-alive',
-      'Accept': 'application/json, text/plain, */*',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36',
-      'Content-Type': 'application/json;charset=UTF-8',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7,fr;q=0.6',
-      'Cookie': 'sharelatex.sid=s%3AVVk1PqK4VnJLoGBMSFYwsoLT4W0yulti.JR4Yj544rl6yg%2BaOoLzky5ke8lS51jrYiYnpLN4MzU4'
-    };
-    
+  exports.main = main
+  function main(params = {}){
+    const url = params.__ow_path
+    const method = params.__ow_method == 'delete' ? 'del' : params.__ow_method
+    const headers = params.__ow_headers
+    logger.log(params)
     const { promisify } = require('util')
     const request = require("request")
     const reqPromise = promisify(request[method]);
-    if(url.includes('RedisUpdated')){
-      project_id = params.project_id ||"5ecf0cb75f735b007489e9e8";
-      doc_id = params.doc_id || "5ecf0cb75f735b007489e9e9";
-      DispatchManager.createAndStartDispatchers(Settings.dispatcherCount || 10);
-      await sleep(1000);    
-      return {body:"OK"};
-    }
-    else return (async () => {
+    return (async () => {
       let result;
       let opt={}
       opt['headers'] = headers;
@@ -331,7 +319,7 @@
         params.__ow_body = Buffer.from(str, 'base64').toString('ascii');
       }
       opt['body'] = params.__ow_body;
-      if(params.__ow_query !== ""){
+      if(params.__ow_query && params.__ow_query !== ""){
         const qs = '?' + params.__ow_query;
         opt['url'] = opt['url'] + qs;
       }
@@ -339,13 +327,6 @@
       var response = JSON.parse(JSON.stringify(result));
       delete response.request
       return response
-    })();
-  }
-
-  if(!module.parent){
-    (async ()=>{
-      const a = await test();
-      console.log(a);
     })();
   }
 

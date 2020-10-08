@@ -44,13 +44,11 @@
         if (error != null) {
           return callback(error);
         }
-
         if ((lines == null) || (version == null)) {
           logger.log({
             project_id: project_id,
             doc_id: doc_id
           }, "doc not in redis so getting from persistence API");
-
           return PersistenceManager.getDoc(project_id, doc_id, function(error, lines, version, ranges, pathname, projectHistoryId, projectHistoryType) {
             if (error != null) {
               return callback(error);
