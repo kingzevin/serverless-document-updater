@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/sharelatex/document-updater-sharelatex.git"
   },
-  "main": "app.js",
+  "main": "handler.js",
   "scripts": {
     "compile:app": "([ -e app/coffee ] && coffee -m $COFFEE_OPTIONS -o app/js -c app/coffee || echo 'No CoffeeScript folder to compile') && ( [ -e app.coffee ] && coffee -m $COFFEE_OPTIONS -c app.coffee || echo 'No CoffeeScript app to compile')",
     "start": "npm run compile:app && node $NODE_APP_OPTIONS app.js",
