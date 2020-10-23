@@ -11,12 +11,12 @@ module.exports =
 	apis:
 		web:
 		# zevin
-			url: process.env['WEB_URL'] or "http://#{process.env['WEB_API_HOST'] or process.env['WEB_HOST'] or "localhost"}:#{process.env['WEB_API_PORT'] or process.env['WEB_PORT'] or 3000}"
+			url: process.env['WEB_URL'] or "http://#{process.env['WEB_API_HOST'] or process.env['WEB_HOST'] or "localhost"}:#{process.env['WEB_API_PORT'] or process.env['WEB_PORT'] or 3000}" # document-updater.config.urls
 			user: process.env['WEB_API_USER'] or "sharelatex"
 			pass: process.env['WEB_API_PASSWORD'] or "password"
 		trackchanges:
 		# zevin
-			url: process.env['TRACKCHANGES_URL'] or "http://#{process.env["TRACK_CHANGES_HOST"] or "localhost"}:3015"
+			url: process.env['TRACKCHANGES_URL'] or "http://#{process.env["TRACK_CHANGES_HOST"] or "localhost"}:3015" # document-updater.config.urls
 		project_history:
 			enabled: true
 			url: "http://#{process.env["PROJECT_HISTORY_HOST"] or "localhost"}:3054"

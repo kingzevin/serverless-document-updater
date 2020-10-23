@@ -1,6 +1,6 @@
 'use strict'
 // environment variables specified by the user
-process.env["WEB_API_HOST"] = '172.17.0.1'; // document-updater.config.env
+process.env["WEB_API_HOST"] = '172.17.0.1'; // document-updater.config.envs
 process.env["WEB_HOST"] = '172.17.0.1';
 process.env["SHARELATEX_MONGO_URL"] = "mongodb://172.17.0.1/sharelatex";
 process.env["MONGO_HOST"] = '172.17.0.1';
@@ -30,10 +30,10 @@ process.env["SHARELATEX_CONFIG"] = __dirname + '/settings.coffee';
 process.env['WEB_URL'] = 'http://172.17.0.1:10001/api/v1/web/guest/sharelatex/web'
 process.env['TRACKCHANGES_URL'] = 'http://172.17.0.1:10001/api/v1/web/guest/sharelatex/track-changes'
 // the user should specify the express listener
-const expressListener = require('./app.js') // document-updater.express.file
+const expressListener = require('./app.js') // document-updater.express.object
 
 const owServerlessExpress = require('./owServerlessExpress.js')
 
-exports.main = function(params){ // document-updater.handler.function
+exports.main = function(params){
   return owServerlessExpress(expressListener, params)
 }

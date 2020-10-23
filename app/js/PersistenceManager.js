@@ -121,7 +121,7 @@
           pass: Settings.apis.web.pass,
           sendImmediately: true
         },
-        headers: {
+        headers: { // document-updater.bug.headers
           "accept": "application/json, text/plain"
         },
         jar: false,

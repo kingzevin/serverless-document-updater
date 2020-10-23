@@ -54,7 +54,7 @@
 
   Metrics.injectMetricsRoute(app);
 
-  DispatchManager.createAndStartDispatchers(Settings.dispatcherCount || 10);
+  // DispatchManager.createAndStartDispatchers(Settings.dispatcherCount || 10);
 
   app.param('project_id', function(req, res, next, project_id) {
     if (project_id != null ? project_id.match(/^[0-9a-f]{24}$/) : void 0) {
@@ -106,15 +106,53 @@
 
   app.get('/flush_queued_projects', HttpController.flushQueuedProjects);
 
-  app.get('/RedisUpdated', async function(req, res) { // document-updater.redis
-    function sleep(ms) {
-    	return new Promise((resolve) => {
-      	setTimeout(resolve, ms);
-      }); 
-    }
-    DispatchManager.createAndStartDispatchers(Settings.dispatcherCount || 10);
-    await sleep(1000);    
-    return res.send('redis updated')
+  app.get('/RedisUpdated', async function(req, res) { // document-updater.background.consumer
+    redis = require("redis-sharelatex");
+    client = redis.createClient(Settings.redis.documentupdater);
+    logger.log("zevin: RedisUpdated")
+    return client.blpop("pending-updates-list", 1, async function(error, result) {
+      var backgroundTask, doc_id, doc_key, list_name, project_id, _ref;
+      logger.log("getting pending-updates-list", error, result);
+      if (error != null) {
+        return res.send(500)
+      }
+      if (result == null) {
+        return res.send(404)
+      }
+      list_name = result[0], doc_key = result[1];
+      Keys = require('./app/js/UpdateKeys')
+      _ref = Keys.splitProjectIdAndDocId(doc_key), project_id = _ref[0], doc_id = _ref[1];
+      function backgroundTask(){
+        return new Promise(function(resolve) {
+          UpdateManager = require('./app/js/UpdateManager')
+          UpdateManager.processOutstandingUpdatesWithLock(project_id, doc_id, function(error) {
+            var logAsWarning;
+            if (error != null) {
+              logAsWarning = (error instanceof Errors.OpRangeNotAvailableError) || (error instanceof Errors.DeleteMismatchError);
+              if (logAsWarning) {
+                logger.warn({
+                  err: error,
+                  project_id: project_id,
+                  doc_id: doc_id
+                }, "error processing update");
+              } else {
+                logger.error({
+                  err: error,
+                  project_id: project_id,
+                  doc_id: doc_id
+                }, "error processing update");
+                resolve({body: `error: ${error}`, statusCode: 500})
+              }
+            }
+            logger.log('zevin line: 155')
+            resolve({body: `redis updated: project_id:${project_id} , doc_id:${doc_id}`, statusCode: 200})
+          })
+        })
+      }
+      logger.log("zevin: getting pending-updates-list")
+      const result1 = await backgroundTask();
+      return res.status(result1.statusCode).send(result1.body);
+    });
   })
 
   app.get('/total', function(req, res) {
