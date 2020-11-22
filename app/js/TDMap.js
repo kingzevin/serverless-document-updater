@@ -1,0 +1,3 @@
+
+TDMap={}
+module.exports = TDMap

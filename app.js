@@ -106,10 +106,20 @@
 
   app.get('/flush_queued_projects', HttpController.flushQueuedProjects);
 
+  // ? 加一个qs,表示version
   app.get('/RedisUpdated', async function(req, res) { // document-updater.background.consumer
     redis = require("redis-sharelatex");
     client = redis.createClient(Settings.redis.documentupdater);
     logger.log("zevin: RedisUpdated")
+    if ((req.query != null ? req.query.v : undefined) != null) {
+      version = parseInt(req.query.v, 10)
+    } else{
+      return res.status(400).send({body: 'no version specified.'});
+    }
+    // zevin: TDS1
+    var TDS1 = process.hrtime();
+    var TD1;
+    logger.log({TDS1: TDS1[0]*1e9+TDS1[1]}, 'Zevin: TDS1')
     return client.blpop("pending-updates-list", 1, async function(error, result) {
       var backgroundTask, doc_id, doc_key, list_name, project_id, _ref;
       logger.log("getting pending-updates-list", error, result);
@@ -119,6 +129,9 @@
       if (result == null) {
         return res.send(404)
       }
+      // zevin: TD1
+      TD1 = process.hrtime();
+      logger.log({TD1: TD1[0]*1e9+TD1[1]}, 'Zevin: TD1')
       list_name = result[0], doc_key = result[1];
       Keys = require('./app/js/UpdateKeys')
       _ref = Keys.splitProjectIdAndDocId(doc_key), project_id = _ref[0], doc_id = _ref[1];
@@ -151,7 +164,54 @@
       }
       logger.log("zevin: getting pending-updates-list")
       const result1 = await backgroundTask();
-      return res.status(result1.statusCode).send(result1.body);
+      // zevin: TDS2
+      const TDS2 = process.hrtime();
+      logger.log({TDS2: TDS2[0]*1e9+TDS2[1]}, 'Zevin: TDS2')
+      TDMap = require('./app/js/TDMap')
+      function sleep(ms) {	
+        return new Promise((resolve) => {	
+          setTimeout(resolve, ms);	
+        });	
+      }
+      var i = 0;
+      while (TDMap['TD3'] == undefined) {
+        await sleep(1)
+        i = i + 1
+        if (i > 2000) {
+          return res.status(500).send({body: 'no TDMap[\'TD3\'] got'});
+        }
+      }
+      i = 0;
+      while (TDMap['TD3'][`${version}`] == undefined) {
+        await sleep(1)
+        i = i + 1
+        if (i > 3000) {
+          return res.status(500).send({body: `no TDMap[\'TD3\'][${version}] got`});
+        }
+      }
+      i = 0;
+      while (TDMap['TD2'] == undefined) {
+        await sleep(1)
+        i = i + 1
+        if (i > 2000) {
+          return res.status(500).send({body: 'no TDMap[\'TD2\'] got'});
+        }
+      }
+      i = 0;
+      while (TDMap['TD2'][`${version}`] == undefined) {
+        await sleep(1)
+        i = i + 1
+        if (i > 3000) {
+          return res.status(500).send({body: `no TDMap[\'TD2\'][${version}] got`});
+        }
+      }
+      TD2 = TDMap['TD2'][`${version}`]
+      TD3 = TDMap['TD3'][`${version}`]
+      body = {body: `Zevin: TDS1=${TDS1[0]*1e9+TDS1[1]};TD1=${TD1[0]*1e9+TD1[1]};TD2=${TD2};TD3=${TD3};TDS2=${TDS2[0]*1e9+TDS2[1]};`};
+      // body = {body: `Zevin: TDS1=${TDS1[0]*1e9+TDS1[1]};TD1=${TD1[0]*1e9+TD1[1]};TD3=${TD3};TD3opData=${TD3opData};TDS2=${TDS2[0]*1e9+TDS2[1]};`};
+      // process.env['TD3'] = null;
+      return res.status(result1.statusCode).send(body);
+      // return res.status(result1.statusCode).send(result1.body);
     });
   })
 

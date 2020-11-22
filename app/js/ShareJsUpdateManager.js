@@ -112,6 +112,15 @@
       return model.on("applyOp", function(doc_key, opData) {
         var doc_id, project_id, _ref;
         _ref = Keys.splitProjectIdAndDocId(doc_key), project_id = _ref[0], doc_id = _ref[1];
+        // zevin: TD3
+        TDMap = require('./TDMap')
+        const NS_PER_SEC = 1e9;
+        const TD3 = process.hrtime();
+        logger.log({TD3: TD3[0]*NS_PER_SEC+TD3[1], update_v: opData.v}, 'Zevin: TD3')
+        if (TDMap['TD3'] == undefined){
+          TDMap['TD3'] = {}
+        }
+        TDMap['TD3'][`${opData.v}`] = TD3[0]*NS_PER_SEC+TD3[1]
         return ShareJsUpdateManager._sendOp(project_id, doc_id, opData);
       });
     },
