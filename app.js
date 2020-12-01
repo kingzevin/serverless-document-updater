@@ -2,6 +2,10 @@
 (function() {
   var DeleteQueueManager, DispatchManager, Errors, HttpController, Metrics, Path, RedisManager, Settings, app, async, docUpdaterRedisClient, eventName, events, express, host, http, logger, mongojs, port, pubsubClient, shutdownCleanly, signal, watchForEvent, _i, _j, _len, _len1, _ref, _ref1, _ref2, _ref3, _ref4, _ref5;
 
+  const TDMap = require('./app/js/TDMap'); // zevin: for timestamps
+  const os = require('os');
+  const hostname = os.hostname();
+
   Metrics = require("metrics-sharelatex");
 
   Metrics.initialize("doc-updater");
@@ -118,8 +122,9 @@
     }
     // zevin: TDS1
     var TDS1 = process.hrtime();
-    var TD1;
-    logger.log({TDS1: TDS1[0]*1e9+TDS1[1]}, 'Zevin: TDS1')
+    var msTDS1 = Date.now();
+    var TD1,msTD1;
+    logger.log({TDS1: TDS1[0]*1e9+TDS1[1], msTDS1: msTDS1}, 'Zevin: TDS1')
     return client.blpop("pending-updates-list", 1, async function(error, result) {
       var backgroundTask, doc_id, doc_key, list_name, project_id, _ref;
       logger.log("getting pending-updates-list", error, result);
@@ -131,7 +136,8 @@
       }
       // zevin: TD1
       TD1 = process.hrtime();
-      logger.log({TD1: TD1[0]*1e9+TD1[1]}, 'Zevin: TD1')
+      msTD1 = Date.now();
+      logger.log({TD1: TD1[0]*1e9+TD1[1], msTD1: msTD1}, 'Zevin: TD1')
       list_name = result[0], doc_key = result[1];
       Keys = require('./app/js/UpdateKeys')
       _ref = Keys.splitProjectIdAndDocId(doc_key), project_id = _ref[0], doc_id = _ref[1];
@@ -165,49 +171,92 @@
       logger.log("zevin: getting pending-updates-list")
       const result1 = await backgroundTask();
       // zevin: TDS2
-      const TDS2 = process.hrtime();
-      logger.log({TDS2: TDS2[0]*1e9+TDS2[1]}, 'Zevin: TDS2')
-      TDMap = require('./app/js/TDMap')
+      var TDS2 = process.hrtime();
+      var msTDS2 = Date.now();
+      logger.log({TDS2: TDS2[0]*1e9+TDS2[1], msTDS2: msTDS2}, 'Zevin: TDS2')
+      if (version == -1) {
+        body = `hostname:${hostname},TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2}`;
+        return res.status(result1.statusCode).send(body);
+      }
       function sleep(ms) {	
         return new Promise((resolve) => {	
           setTimeout(resolve, ms);	
         });	
       }
       var i = 0;
-      while (TDMap['TD3'] == undefined) {
+      while (TDMap.ifMapNotExists('TD2') || TDMap.ifMapNotExists('msTD2')) {
         await sleep(1)
         i = i + 1
-        if (i > 2000) {
-          return res.status(500).send({body: 'no TDMap[\'TD3\'] got'});
+        if (i > 5000) {
+          if (TDMap.ifMapNotExists('TD2')){
+            logger.log('no TDMap[\'TD2\'] got', 'Zevin\'s 500')
+            return res.status(500).send({body: `no TDMap[\'TD2\'] got; hostname:${hostname},TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2},TD1:${TD1[0]*1e9+TD1[1]},msTD1:${msTD1}`});
+          }
+          else {
+            logger.log('no TDMap[\'msTD2\'] got', 'Zevin\'s 500')
+            return res.status(500).send({body: `no TDMap[\'msTD2\'] got; hostname:${hostname},TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2},TD1:${TD1[0]*1e9+TD1[1]},msTD1:${msTD1}`});
+          }
         }
       }
       i = 0;
-      while (TDMap['TD3'][`${version}`] == undefined) {
+      while (TDMap.ifValueNotExists('TD2', `${version}`) || TDMap.ifValueNotExists('msTD2', `${version}`)) {
         await sleep(1)
         i = i + 1
-        if (i > 3000) {
-          return res.status(500).send({body: `no TDMap[\'TD3\'][${version}] got`});
+        if (i > 300) {
+          if (TDMap.ifValueNotExists('TD2', `${version}`)){
+            logger.log(`hostname:${hostname};no TDMap[\'TD2\'][${version}] got`, 'Zevin\'s 500')
+            return res.status(500).send({body: `no TDMap[\'TD2\'][${version}] got; hostname:${hostname},TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2},TD1:${TD1[0]*1e9+TD1[1]},msTD1:${msTD1}`});
+          }
+          else{
+            logger.log(`hostname:${hostname};no TDMap[\'msTD2\'][${version}] got`, 'Zevin\'s 500')
+            return res.status(500).send({body: `no TDMap[\'msTD2\'][${version}] got; hostname:${hostname},TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2},TD1:${TD1[0]*1e9+TD1[1]},msTD1:${msTD1}`});
+          }
+        }
+      }
+      var i = 0;
+      while (TDMap.ifMapNotExists('TD3') || TDMap.ifMapNotExists('msTD3')) {
+        await sleep(1)
+        i = i + 1
+        if (i > 1000) {
+          if (TDMap.ifMapNotExists('TD3')){
+            logger.log('no TDMap[\'TD3\'] got', 'Zevin\'s 500')
+            return res.status(500).send({body: `no TDMap[\'TD3\'] got; hostname:${hostname},TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2},TD1:${TD1[0]*1e9+TD1[1]},msTD1:${msTD1}`});
+          }
+          else {
+            logger.log('no TDMap[\'msTD3\'] got', 'Zevin\'s 500')
+            return res.status(500).send({body: `no TDMap[\'msTD3\'] got; hostname:${hostname},TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2},TD1:${TD1[0]*1e9+TD1[1]},msTD1:${msTD1}`});
+          }
         }
       }
       i = 0;
-      while (TDMap['TD2'] == undefined) {
+      while (TDMap.ifValueNotExists('TD3', `${version}`) || TDMap.ifValueNotExists('msTD3', `${version}`)) {
         await sleep(1)
         i = i + 1
-        if (i > 2000) {
-          return res.status(500).send({body: 'no TDMap[\'TD2\'] got'});
+        if (i > 300) {
+          if (TDMap.ifValueNotExists('TD3', `${version}`)){
+            logger.log(`hostname:${hostname};no TDMap[\'TD3\'][${version}] got`, 'Zevin\'s 500')
+            return res.status(500).send({body: `no TDMap[\'TD3\'][${version}] got; hostname:${hostname},TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2},TD1:${TD1[0]*1e9+TD1[1]},msTD1:${msTD1}`});
+          }
+          else{
+            logger.log(`hostname:${hostname};no TDMap[\'msTD3\'][${version}] got`, 'Zevin\'s 500')
+            return res.status(500).send({body: `no TDMap[\'msTD3\'][${version}] got; hostname:${hostname},TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2},TD1:${TD1[0]*1e9+TD1[1]},msTD1:${msTD1}`});
+          }
         }
       }
-      i = 0;
-      while (TDMap['TD2'][`${version}`] == undefined) {
-        await sleep(1)
-        i = i + 1
-        if (i > 3000) {
-          return res.status(500).send({body: `no TDMap[\'TD2\'][${version}] got`});
-        }
-      }
-      TD2 = TDMap['TD2'][`${version}`]
-      TD3 = TDMap['TD3'][`${version}`]
-      body = {body: `Zevin: TDS1=${TDS1[0]*1e9+TDS1[1]};TD1=${TD1[0]*1e9+TD1[1]};TD2=${TD2};TD3=${TD3};TDS2=${TDS2[0]*1e9+TDS2[1]};`};
+      var TD2 = JSON.stringify(TDMap.getMap('TD2'));
+      var msTD2 = JSON.stringify(TDMap.getMap('msTD2'));
+      var TD3 = JSON.stringify(TDMap.getMap('TD3'));
+      var msTD3 = JSON.stringify(TDMap.getMap('msTD3'));
+      TDMap.deleteKey('TD2', `${version}`);
+      TDMap.deleteKey('msTD2', `${version}`);
+      TDMap.deleteKey('TD3', `${version}`);
+      TDMap.deleteKey('msTD3', `${version}`);
+      // var TD2 = TDMap.getValue('TD2', `${version}`);
+      // var msTD2 = TDMap.getValue('msTD2', `${version}`);
+      // var TD3 = TDMap.getValue('TD3', `${version}`);
+      // var msTD3 = TDMap.getValue('msTD3', `${version}`);
+      body = `hostname:${hostname},TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2},TD1:${TD1[0]*1e9+TD1[1]},msTD1:${msTD1},TD2:${TD2},msTD2:${msTD2},TD3:${TD3},msTD3:${msTD3}`;
+      // body = `TDS1:${TDS1[0]*1e9+TDS1[1]},msTDS1:${msTDS1},TD1:${TD1[0]*1e9+TD1[1]},msTD1:${msTD1},TD2:${TD2},msTD2:${msTD2},TD3:${TD3},msTD3:${msTD3},TDS2:${TDS2[0]*1e9+TDS2[1]},msTDS2:${msTDS2}`;
       // body = {body: `Zevin: TDS1=${TDS1[0]*1e9+TDS1[1]};TD1=${TD1[0]*1e9+TD1[1]};TD3=${TD3};TD3opData=${TD3opData};TDS2=${TDS2[0]*1e9+TDS2[1]};`};
       // process.env['TD3'] = null;
       return res.status(result1.statusCode).send(body);

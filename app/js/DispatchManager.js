@@ -32,9 +32,9 @@
           timer = new Metrics.Timer("worker.waiting");
           return worker.client.blpop("pending-updates-list", 0, function(error, result) {
             // zevin: TD1
-            var TD1;
-            TD1 = process.hrtime();
-            logger.log({TD1: TD1[0]*1e9+TD1[1]}, 'Zevin: TD1')
+            var TD1 = process.hrtime();
+            var msTD1 = Date.now();
+            logger.log({TD1: TD1[0]*1e9+TD1[1], msTD1: msTD1}, 'Zevin: TD1');
             var backgroundTask, doc_id, doc_key, list_name, project_id, _ref;
             logger.log("getting pending-updates-list", error, result);
             timer.done();

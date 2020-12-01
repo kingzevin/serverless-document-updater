@@ -3,6 +3,8 @@
   var DocumentManager, Errors, HistoryManager, LockManager, Metrics, Profiler, RangesManager, RealTimeRedisManager, RedisManager, Settings, ShareJsUpdateManager, SnapshotManager, UpdateManager, async, logger, _,
     __slice = [].slice;
 
+  const TDMap = require('./TDMap'); // zevin: for timestamps
+
   LockManager = require("./LockManager");
 
   RedisManager = require("./RedisManager");
@@ -127,14 +129,15 @@
           profile.log("getPendingUpdatesForDoc");
           doUpdate = function(update, cb) {
             // zevin: TD2
-            TDMap = require('./TDMap')
             const NS_PER_SEC = 1e9;
-            const TD2 = process.hrtime();
-            logger.log({TD2: TD2[0]*NS_PER_SEC+TD2[1], update_v: update.v}, 'Zevin: TD2')
-            if (TDMap['TD2'] == undefined){
-              TDMap['TD2'] = {}
-            }
-            TDMap['TD2'][`${update.v}`] = TD2[0]*NS_PER_SEC+TD2[1]
+            var TD2 = process.hrtime();
+            var msTD2 = Date.now();
+            version = update.v;
+            logger.log({TD2: TD2[0]*NS_PER_SEC+TD2[1], msTD2: msTD2, update_v: version}, 'Zevin: TD2');
+            TDMap.initMapIfNotExists('TD2')
+            TDMap.initMapIfNotExists('msTD2')
+            TDMap.setValue('TD2', `${version}`, TD2[0]*NS_PER_SEC+TD2[1]);
+            TDMap.setValue('msTD2', `${version}`, msTD2);
             return UpdateManager.applyUpdate(project_id, doc_id, update, function(err) {
               profile.log("applyUpdate");
               return cb(err);

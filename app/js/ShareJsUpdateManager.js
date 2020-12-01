@@ -2,6 +2,8 @@
 (function() {
   var Errors, EventEmitter, Keys, MAX_AGE_OF_OP, RealTimeRedisManager, Settings, ShareJsDB, ShareJsModel, ShareJsUpdateManager, crypto, logger, metrics, util;
 
+  const TDMap = require('./TDMap'); // zevin: for timestamps
+
   ShareJsModel = require("./sharejs/server/model");
 
   ShareJsDB = require("./ShareJsDB");
@@ -113,14 +115,15 @@
         var doc_id, project_id, _ref;
         _ref = Keys.splitProjectIdAndDocId(doc_key), project_id = _ref[0], doc_id = _ref[1];
         // zevin: TD3
-        TDMap = require('./TDMap')
         const NS_PER_SEC = 1e9;
         const TD3 = process.hrtime();
-        logger.log({TD3: TD3[0]*NS_PER_SEC+TD3[1], update_v: opData.v}, 'Zevin: TD3')
-        if (TDMap['TD3'] == undefined){
-          TDMap['TD3'] = {}
-        }
-        TDMap['TD3'][`${opData.v}`] = TD3[0]*NS_PER_SEC+TD3[1]
+        const msTD3 = Date.now();
+        version = opData.v;
+        logger.log({TD3: TD3[0]*NS_PER_SEC+TD3[1], msTD3: msTD3, update_v: version}, 'Zevin: TD3');
+        TDMap.initMapIfNotExists('TD3')
+        TDMap.initMapIfNotExists('msTD3')
+        TDMap.setValue('TD3', `${version}`, TD3[0]*NS_PER_SEC+TD3[1]);
+        TDMap.setValue('msTD3', `${version}`, msTD3);
         return ShareJsUpdateManager._sendOp(project_id, doc_id, opData);
       });
     },
